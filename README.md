@@ -8,8 +8,10 @@ Credit: [https://sepolia.scrollscan.com/address/0x2bde7bc23be035c02c4536e14317b3
 USDC: [https://sepolia.scrollscan.com/address/0x0b30312C7B67D385dE07655dB4DD58a1508af4B1](https://sepolia.scrollscan.com/address/0x0b30312C7B67D385dE07655dB4DD58a1508af4B1)
 
 Zircuit Testnet:
-USDC deployed at: 0xf52124E0BF97F20f944D45d475B735E831Cd1575
-Credit deployed at: 0x306D4805CfBEF177C06800AEd812d1f71cE14D2D
+<br>
+USDC: 0xf52124E0BF97F20f944D45d475B735E831Cd1575
+<br>
+Credit: 0x306D4805CfBEF177C06800AEd812d1f71cE14D2D
 
 Fhenix:
 <br>
