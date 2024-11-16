@@ -15,12 +15,12 @@ const config = getDefaultConfig({
 
 export function Web3Provider({ children }: { children: React.ReactNode }) {
     return (
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
+      <QueryClientProvider client={queryClient}>
+        <WagmiProvider config={config}>
           <RainbowKitProvider>
             {children}
           </RainbowKitProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
+        </WagmiProvider>
+      </QueryClientProvider>
     )
 }
