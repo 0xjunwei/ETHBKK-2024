@@ -1,6 +1,6 @@
 import { createWeb3Modal, defaultWagmiConfig } from '@web3modal/wagmi/react'
 import { projectId} from './wagmi'
-import { mainnet, scrollSepolia } from 'wagmi/chains'
+import { mainnet, scrollSepolia, zircuitTestnet } from 'wagmi/chains'
 
 const metadata = {
   name: 'LimpehFi',
@@ -11,7 +11,7 @@ const metadata = {
 
 // Create wagmi config
 const config = defaultWagmiConfig({
-  chains: [mainnet, scrollSepolia],
+  chains: [mainnet, scrollSepolia, zircuitTestnet],
   projectId,
   metadata
 })

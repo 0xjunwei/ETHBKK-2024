@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { SwapInterface } from '@/components/swap-interface'
+import { LoanInterface } from '@/components/loan-interface'
 import { Navbar } from '@/components/navbar'
 import { motion, useAnimation } from 'framer-motion'
 
@@ -29,10 +29,10 @@ export default function Home() {
           custom={0}
         >
           <h1 className="text-4xl md:text-6xl font-extrabold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-600">
-            Uncollateralized DeFi Loans
+            DeFi Loans without collateral?! 😱
           </h1>
           <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Mo Tokens. Mo Problems. Verify and take a loan on a swap.
+            Mo Tokens. Mo Problems. Verify and take a loan for any transaction.
           </p>
         </motion.section>
 
@@ -44,11 +44,11 @@ export default function Home() {
           >
             <Card className="w-full bg-gray-800 border-gray-700">
               <CardHeader>
-                <CardTitle className="text-white">Swap Tokens</CardTitle>
-                <CardDescription className="text-gray-400">Exchange tokens with our built-in swap feature</CardDescription>
+                <CardTitle className="text-white">Assets to borrow</CardTitle>
+                <CardDescription className="text-gray-400">Choose an asset to borrow</CardDescription>
               </CardHeader>
               <CardContent>
-                <SwapInterface />
+                <LoanInterface />
               </CardContent>
             </Card>
           </motion.div>
@@ -65,9 +65,9 @@ export default function Home() {
                 </CardHeader>
                 <CardContent>
                   <ul className="list-disc list-inside space-y-2 text-gray-300">
-                    <li>Undercollateralized loans</li>
-                    <li>Integrated token swapping</li>
+                    <li>Easily Accessible Unsecured loans</li>
                     <li>Secure identity verification</li>
+                    <li>Increase Limit by building Credit Score</li>
                     <li>Competitive interest rates</li>
                   </ul>
                 </CardContent>
@@ -84,11 +84,11 @@ export default function Home() {
                   <CardTitle className="text-white">Get Started</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-gray-300 mb-4">Ready to dive into the world of uncollateralized DeFi loans? Follow these steps:</p>
+                  <p className="text-gray-300 mb-4">Ready to dive into the world of DeFi loans with no collateral? Follow these steps:</p>
                   <ol className="list-decimal list-inside space-y-2 text-gray-300">
                     <li>Connect your wallet</li>
                     <li>Verify your identity with World ID</li>
-                    <li>Swap tokens or apply for a loan</li>
+                    <li>apply for a loan</li>
                     <li>Enjoy the benefits of LimpehFi</li>
                   </ol>
                 </CardContent>

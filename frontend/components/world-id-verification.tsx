@@ -54,7 +54,7 @@ export default function WorldIDVerification() {
       </CardHeader>
       <CardContent className="space-y-4">
         <IDKitWidget
-          app_id={`app_${process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID || ""}`}
+          app_id={`app_${process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID}`}
           action="testing"
           signal="my_signal"
           verification_level={VerificationLevel.Orb} 

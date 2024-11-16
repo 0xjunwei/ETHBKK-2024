@@ -74,3 +74,34 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+th {
+  text-align: left;
+  font-weight: 500;
+}
+
+td {
+  text-align: left;
+} 
+
+.table-auto {
+  table-layout: fixed;
+}
+
+th, td {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+th > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+} 

@@ -4,12 +4,12 @@ import { projectId, queryClient } from '@/lib/wagmi'
 import { QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 import { RainbowKitProvider, getDefaultConfig } from '@rainbow-me/rainbowkit'
-import { mainnet, unichainSepolia } from 'wagmi/chains'
+import { mainnet, scrollSepolia, zircuitTestnet } from 'wagmi/chains'
 
 const config = getDefaultConfig({
   appName: 'LimpehFi',
   projectId: projectId,
-  chains: [mainnet, unichainSepolia],
+  chains: [mainnet, scrollSepolia, zircuitTestnet],
   ssr: true, // For NextJS
 })
 

@@ -1,21 +1,19 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import { Button } from "@/components/ui/button"
 import { IDKitWidget, ISuccessResult } from '@worldcoin/idkit'
 import { motion } from 'framer-motion'
-
+import { useVerificationStore } from '@/stores/verification-store'
 import { WalletConnect } from '@/components/wallet-connect'
 
 export function Navbar() {
-  const [isVerified, setIsVerified] = useState(false)
+  const { isVerified, setIsVerified } = useVerificationStore()
 
   const verifyProof = async (proof: ISuccessResult) => {
     try {
       // Implement your verification logic here
       console.log('Proof received:', proof)
-      // For demo purposes, we'll just set it to true
       setIsVerified(true)
     } catch (error) {
       console.error('Verification failed:', error)
