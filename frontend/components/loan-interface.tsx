@@ -6,10 +6,10 @@ import { InfoIcon, CalendarIcon, ClockIcon } from 'lucide-react'
 import Image from 'next/image'
 import { useVerificationStore } from '@/stores/verification-store'
 import { useEffect, useState } from 'react'
-import { formatUnits } from 'viem'
-import { useAccount, useReadContract } from 'wagmi'
+import { formatUnits } from 'ethers'
+import { ethers } from 'ethers'
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEPLOYER_CONTRACT_ADDRESS as `0x${string}`
+const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEPLOYER_CONTRACT_ADDRESS as string
 
 interface AccountData {
   kyc: string
@@ -33,71 +33,111 @@ const assets = [
     },
 ]
 
+const abi = [
+  {
+    inputs: [{ internalType: "address", name: "", type: "address" }],
+    name: "accounts",
+    outputs: [
+      { internalType: "string", name: "kyc", type: "string" },
+      { internalType: "uint256", name: "creditLimit", type: "uint256" },
+      { internalType: "uint256", name: "totalBorrowed", type: "uint256" },
+      { internalType: "uint256", name: "totalPaid", type: "uint256" },
+      { internalType: "uint256", name: "totalDue", type: "uint256" },
+      { internalType: "uint256", name: "statementDate", type: "uint256" },
+      { internalType: "uint256", name: "dueDate", type: "uint256" },
+      { internalType: "uint256", name: "lateFee", type: "uint256" },
+      { internalType: "bool", name: "isAccountActive", type: "bool" }
+    ],
+    stateMutability: "view",
+    type: "function"
+  }
+]
+
 export function LoanInterface() {
   const { isVerified } = useVerificationStore()
-  const { address } = useAccount()
   const [accountData, setAccountData] = useState<AccountData | null>(null)
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  // Read account data from contract
-  const { data: accountInfo, isError, isPending } = useReadContract({
-    address: CONTRACT_ADDRESS,
-    abi: [
-      {
-        inputs: [{ internalType: "address", name: "user_address", type: "address" }],
-        name: "accounts",
-        outputs: [
-          { internalType: "string", name: "kyc", type: "string" },
-          { internalType: "uint256", name: "creditLimit", type: "uint256" },
-          { internalType: "uint256", name: "totalBorrowed", type: "uint256" },
-          { internalType: "uint256", name: "totalPaid", type: "uint256" },
-          { internalType: "uint256", name: "totalDue", type: "uint256" },
-          { internalType: "uint256", name: "statementDate", type: "uint256" },
-          { internalType: "uint256", name: "dueDate", type: "uint256" },
-          { internalType: "uint256", name: "lateFee", type: "uint256" },
-          { internalType: "bool", name: "isAccountActive", type: "bool" }
-        ],
-        stateMutability: "view",
-        type: "function"
+  // Add this effect to monitor verification state
+  useEffect(() => {
+    console.log('LoanInterface - Verification State Changed:', { isVerified })
+  }, [isVerified])
+
+  useEffect(() => {
+    async function fetchAccountData() {
+      try {
+        if (typeof window.ethereum !== 'undefined') {
+          const provider = new ethers.BrowserProvider(window.ethereum)
+          
+          // Log verification state when fetching
+          console.log('Fetching account data. Verification status:', { isVerified })
+          
+          const signer = await provider.getSigner()
+          const signerAddress = await signer.getAddress()
+          
+          // Log connection details
+          console.log('Debug Info:', {
+            contractAddress: CONTRACT_ADDRESS,
+            signerAddress: signerAddress,
+            abiFragment: abi[0]
+          })
+          
+          const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider)
+          
+          console.log('Calling accounts function with address:', signerAddress)
+          const accountInfo = await contract.accounts(signerAddress)
+          console.log('Raw account info:', accountInfo)
+
+          if (!accountInfo) {
+            throw new Error('No account data returned from contract')
+          }
+
+          const formattedAccountData: AccountData = {
+            kyc: accountInfo.kyc,
+            creditLimit: accountInfo.creditLimit,
+            totalBorrowed: accountInfo.totalBorrowed,
+            totalPaid: accountInfo.totalPaid,
+            totalDue: accountInfo.totalDue,
+            statementDate: accountInfo.statementDate,
+            dueDate: accountInfo.dueDate,
+            lateFee: accountInfo.lateFee,
+            isAccountActive: accountInfo.isAccountActive
+          }
+          
+          console.log('Formatted account data:', formattedAccountData)
+          setAccountData(formattedAccountData)
+        } else {
+          throw new Error('Ethereum provider not found')
+        }
+      } catch (err) {
+        console.error('Contract call failed:', err)
+
+      } finally {
+        setIsLoading(false)
       }
-    ],
-    functionName: 'accounts',
-    args: address ? [address] : undefined,
-    query: {
-      enabled: !!address
     }
-  })
+    // Initial fetch
+    fetchAccountData()
 
-  useEffect(() => {
-    setIsLoading(isPending);
-    if (isError) {
-        setError('Failed to fetch account data');
+    // Listen for network changes
+    if (window.ethereum) {
+      window.ethereum.on('chainChanged', () => {
+        console.log('Network changed, refetching data...')
+        fetchAccountData()
+      })
     }
-  }, [isPending, isError]);
 
-  useEffect(() => {
-    if (accountInfo) {
-      console.log('Raw account info:', accountInfo);
-      const formattedAccountData = {
-        kyc: accountInfo[0],
-        creditLimit: accountInfo[1],
-        totalBorrowed: accountInfo[2],
-        totalPaid: accountInfo[3],
-        totalDue: accountInfo[4],
-        statementDate: accountInfo[5],
-        dueDate: accountInfo[6],
-        lateFee: accountInfo[7],
-        isAccountActive: accountInfo[8]
-      };
-      console.log('Formatted account data:', formattedAccountData);
-      setAccountData(formattedAccountData);
-    } else {
-      console.log('No account info available');
-      setIsLoading(false);
+    // Cleanup listener
+    return () => {
+      if (window.ethereum) {
+        window.ethereum.removeListener('chainChanged', fetchAccountData)
+      }
     }
-  }, [accountInfo]);
+  }, [isVerified])
 
+
+  
   // Convert Unix timestamp to Date object
   const dueDate = accountData?.dueDate ? new Date(Number(accountData.dueDate) * 1000) : new Date()
   const today = new Date()
@@ -105,19 +145,19 @@ export function LoanInterface() {
 
   const handleBorrow = () => {
     if (!isVerified) {
-      alert('Please verify with World ID first')
+      console.log('Please verify with World ID first')
       return
     }
-    // Proceed with borrow transaction
+    console.log('Borrow clicked - Verified user, proceeding...')
     console.log('Proceeding with borrow...')
   }
 
   const handleRepay = () => {
     if (!isVerified) {
-      alert('Please verify with World ID first')
+      console.log('Please verify with World ID first')
       return
     }
-    // Proceed with repay transaction
+    console.log('Repay clicked - Verified user, proceeding...')
     console.log('Proceeding with repay...')
   }
 
@@ -173,11 +213,15 @@ export function LoanInterface() {
                     <TableCell className="py-6 w-[150px]">
                       <Button 
                         variant="secondary" 
-                        className={`w-full ${!isVerified ? 'opacity-50 cursor-not-allowed' : 'bg-gray-700 hover:bg-gray-600'} text-white`}
+                        className={`w-full ${
+                          isVerified 
+                            ? 'bg-blue-600 hover:bg-blue-700' 
+                            : 'bg-gray-700 hover:bg-gray-600'
+                        } text-white`}
                         onClick={handleBorrow}
                         disabled={!isVerified}
                       >
-                        {!isVerified ? 'Verify First' : 'Borrow'}
+                        {isVerified ? 'Borrow' : 'Verify First'}
                       </Button>
                     </TableCell>
                     <TableCell className="py-6 w-[150px]">
@@ -204,11 +248,15 @@ export function LoanInterface() {
               </div>
               <Button 
                 variant="secondary" 
-                className={`${!isVerified ? 'opacity-50 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'} text-white px-12 py-6 text-xl rounded-xl`}
+                className={`${
+                  isVerified 
+                    ? 'bg-blue-600 hover:bg-blue-700' 
+                    : 'bg-gray-700 hover:bg-gray-600'
+                } text-white px-12 py-6 text-xl rounded-xl`}
                 onClick={handleRepay}
                 disabled={!isVerified}
               >
-                {!isVerified ? 'Verify First' : 'Repay'}
+                {isVerified ? 'Repay' : 'Verify First'}
               </Button>
             </div>
           </div>

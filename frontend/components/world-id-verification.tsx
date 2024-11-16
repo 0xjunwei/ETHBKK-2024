@@ -4,10 +4,12 @@ import { useState } from 'react'
 import { IDKitWidget, ISuccessResult, VerificationLevel } from '@worldcoin/idkit'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { useVerificationStore } from '@/stores/verification-store'
 
 export default function WorldIDVerification() {
   const [verificationResult, setVerificationResult] = useState<ISuccessResult | null>(null)
   const [error, setError] = useState<string>('')
+  const { isVerified, setIsVerified } = useVerificationStore()
 
   const verifyProof = async (proof: ISuccessResult) => {
     try {
@@ -33,6 +35,7 @@ export default function WorldIDVerification() {
       }
 
       console.log('Verification successful:', data)
+      setIsVerified(true)
       return data
     } catch (err) {
       console.error('Error during verification:', err)
@@ -43,7 +46,9 @@ export default function WorldIDVerification() {
 
   const onSuccess = (result: ISuccessResult) => {
     setVerificationResult(result)
-    console.log('Proof received:', result)
+    setIsVerified(true)
+    console.log('World ID Verification successful, updating state...')
+    console.log('Current store state:', { isVerified })
   }
 
   return (
@@ -62,8 +67,12 @@ export default function WorldIDVerification() {
           handleVerify={verifyProof}
         >
           {({ open }) => (
-            <Button onClick={open} variant="outline">
-              {verificationResult ? 'Verified ✓' : 'Verify with World ID'}
+            <Button 
+              onClick={open} 
+              variant="outline"
+              className={isVerified ? 'bg-green-500 hover:bg-green-600' : ''}
+            >
+              {isVerified ? 'Verified ✓' : 'Verify with World ID'}
             </Button>
           )}
         </IDKitWidget>
