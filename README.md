@@ -9,3 +9,6 @@ USDC: [https://sepolia.scrollscan.com/address/0x0b30312C7B67D385dE07655dB4DD58a1
 
 Zircuit Testnet:
 
+Fhenix:
+USDC: 0x085da17a14D4AB15e34586fb998BaABA1AaC73D6
+Credit: 0xcb0CEc00b65ED1354EFb7f3f551897Ec480504dE
