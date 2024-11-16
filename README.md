@@ -1,6 +1,8 @@
 # ETHBKK-2024
 For our ETHBangkok 2024 Submission
 
+Uncollateralized Loans for KYC individuals functioning as a credit card 
+
 Scroll Testnet:
 <br>
 Credit: [https://sepolia.scrollscan.com/address/0x2bde7bc23be035c02c4536e14317b38f709bae84](https://sepolia.scrollscan.com/address/0xB808aC52A6d4ae130Ec4d2edc34283F7678Bf5D3#code)
@@ -18,3 +20,16 @@ Fhenix:
 USDC: 0x085da17a14D4AB15e34586fb998BaABA1AaC73D6
 <br>
 Credit: 0xcb0CEc00b65ED1354EFb7f3f551897Ec480504dE
+
+
+
+short description of the team and their backgrounds
+Junwei: Backend
+MeePok: Backend
+Ryan: No
+
+instructions for testing the integration
+- visit https://ethbkk-2024-deployment.vercel.app/
+- Follow the video demo for guide
+- But for KYC require deployer wallet, or contact team to kyc your account. To gain borrow ability as the KYC Hashnullifier is stored in contract to prevent sybil.
+- POC does not pass the hashnullifier into the smart contract as we are not doing world track but showcasing as POC to prevent sybil
