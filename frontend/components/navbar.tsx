@@ -15,6 +15,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
 import { ChevronDown, LogOut, Check } from 'lucide-react'
+const WORLDCOIN_APP_ID = process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID as string
 
 export function Navbar() {
   const { isVerified, setIsVerified } = useVerificationStore()
@@ -154,7 +155,7 @@ export function Navbar() {
             </DropdownMenu>
           ) : (
             <IDKitWidget
-              app_id="app_staging_1b1bcbd424e6b9865f37e0c581b173e0"
+              app_id={`app_${WORLDCOIN_APP_ID}`}
               action="verify"
               signal="my_signal"
               onSuccess={onSuccess}

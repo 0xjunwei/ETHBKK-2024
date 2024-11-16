@@ -418,7 +418,7 @@ export function LoanInterface() {
                   <TableHead className="text-xl text-gray-400 font-medium w-[200px]">
                     <div className="flex flex-col">
                       <span>Interest Rate</span>
-                      <span className="text-sm text-gray-400">Aft Due (Per Day)</span>
+                      <span className="text-sm text-gray-400">Aft Due (1 Time)</span>
                     </div>
                     {/* <InfoIcon className="h-5 w-5 cursor-help text-gray-400 ml-2" /> */}
                   </TableHead>
