@@ -1,0 +1,237 @@
+//SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@fhenixprotocol/contracts/FHE.sol";
+import {Permissioned, Permission} from "@fhenixprotocol/contracts/access/Permissioned.sol";
+
+contract Credit {
+    // Admin list
+    mapping(address => bool) public adminList;
+    // Dapp > Wallet > status
+    // Prevent anyone from accessing
+    mapping(address => mapping(address => bool)) public activeContract;
+    // Late fee percentage
+    uint256 constant LATE_FEE_PERCENTAGE = 100; // 1% late fee
+    uint256 constant CREDIT_INCREASE_PERCENTAGE = 100; // 1%
+
+    struct PersonalCredit {
+        // Prevent Sybil, using worldcoin kyc hashnullfier as poc, can look for more ways like 3rd party svc without scanning iris
+        string kyc;
+        // Sets a initial limit of 200 usdc per pax, in theory if run with funds, we can see it as marketing referral expenses
+        euint128 creditLimit;
+        uint256 totalBorrowed;
+        uint256 totalPaid;
+        // Calculating total borrowed amount  - total paid to get total due
+        uint256 totalDue;
+        // Unix timestamp format, upon statement date we would take totalDue and charge it to due date
+        uint256 dueDate;
+        uint256 lateFee;
+        // If in debt and not paid treat as inactivate calculating interest based on dueDate till time of payment at 2% per month? just theory
+        bool isAccountActive;
+    }
+
+    // Mapping address to their personal credit
+    mapping(address => PersonalCredit) public accounts;
+    // Checking if null Hash been used to prevent sybil
+    mapping(string => bool) public hashList;
+    // Address of USDC POC will only use USDC as an example
+    IERC20 immutable USDCTokenAddress;
+
+    constructor(address _usdcTokenAddress) {
+        adminList[msg.sender] = true;
+        USDCTokenAddress = IERC20(_usdcTokenAddress);
+    }
+
+    // Modifier to allow only the admin to perform certain actions
+    modifier onlyAdmin() {
+        require(adminList[msg.sender], "Only admin can perform this action");
+        _;
+    }
+
+    // Initialize a new credit account with a limit and activate it
+    function createAccount(
+        address _user,
+        string memory _kycHash
+    ) public onlyAdmin {
+        PersonalCredit storage account = accounts[_user];
+        require(!account.isAccountActive, "Account already active");
+        account.kyc = _kycHash;
+        // Assuming usdc and 6 decimals
+        // Understand there is privacy leak from just credit limit
+        // POC, if we use shield erc20, and hide borrowing amount and add credit limit increase based on certain % of credit limit before increasing
+        // Then FHE will be useful in this context, due to time constraint will be using FHE as a poc demo
+        account.creditLimit = FHE.asEuint128(200000000);
+        account.totalBorrowed = 0;
+        account.totalPaid = 0;
+        account.totalDue = 0;
+        account.dueDate = 0; // Set upon first charge
+        account.lateFee = 0;
+        account.isAccountActive = true;
+    }
+
+    // Add authorized hook to borrow funds
+    function addAuthorizedDapp(address _addressOfDapp) public {
+        PersonalCredit storage userCreditStatus = accounts[msg.sender];
+        // Check if he is a kyc-ed individual first
+        require(bytes(userCreditStatus.kyc).length != 0, "User is not KYC-ed");
+        // Dapp > Wallet > status
+        activeContract[_addressOfDapp][msg.sender] = true;
+    }
+
+    // Remove authorized hook to borrow funds
+    function removeAuthorizedDapp(address _addressOfDapp) public {
+        PersonalCredit storage userCreditStatus = accounts[msg.sender];
+        // Check if he is a kyc-ed individual first
+        require(bytes(userCreditStatus.kyc).length != 0, "User is not KYC-ed");
+        // Dapp > Wallet > status
+        activeContract[_addressOfDapp][msg.sender] = false;
+    }
+
+    // Create charge by authorized dapp (in this context hook contract will call for funds to allow swapping)
+    function borrowFunds(
+        address _borrowerAddress,
+        uint256 _amountToBorrow
+    ) public {
+        if (msg.sender == _borrowerAddress) {
+            PersonalCredit storage userCreditStatus = accounts[
+                _borrowerAddress
+            ];
+            // Valid transfer, check the amount to borrow is within the credit limit
+            _amountToBorrow;
+            // Understand should not decrypt here, should just do fhe.req but due to time constraints going to cheat by decrypting for mvp
+            require(
+                userCreditStatus.totalBorrowed + _amountToBorrow <=
+                    uint256(FHE.decrypt(userCreditStatus.creditLimit)),
+                "Insufficient credit limit"
+            );
+            // Set due date to 30 days from now if this is the first borrow
+            if (userCreditStatus.dueDate == 0) {
+                userCreditStatus.dueDate = block.timestamp + 30 days;
+            }
+            // Check if due date if not 0
+            else {
+                require(
+                    block.timestamp < userCreditStatus.dueDate,
+                    "Cannot borrow, payment is due"
+                );
+            }
+
+            // Updating user owe and debt
+            // Update borrowed and due amounts
+            userCreditStatus.totalBorrowed += _amountToBorrow;
+            userCreditStatus.totalDue =
+                userCreditStatus.totalBorrowed -
+                userCreditStatus.totalPaid;
+            // Transfer USDC to the borrower
+            require(
+                USDCTokenAddress.transfer(_borrowerAddress, _amountToBorrow),
+                "USDC transfer failed"
+            );
+        } else {
+            // Check if borrower authorized the dapp (Hook) to borrow funds for it
+            require(
+                activeContract[msg.sender][_borrowerAddress],
+                "Only admin can perform this action"
+            );
+            PersonalCredit storage userCreditStatus = accounts[
+                _borrowerAddress
+            ];
+            // Valid transfer, check the amount to borrow is within the credit limit
+            // Understand should not decrypt here, should just do fhe.req but due to time constraints going to cheat by decrypting for mvp
+            require(
+                userCreditStatus.totalBorrowed + _amountToBorrow <=
+                    uint256(FHE.decrypt(userCreditStatus.creditLimit)),
+                "Insufficient credit limit"
+            );
+            // Set due date to 30 days from now if this is the first borrow
+            if (userCreditStatus.dueDate == 0) {
+                userCreditStatus.dueDate = block.timestamp + 30 days;
+            }
+            // Check if due date if not 0
+            else {
+                require(
+                    block.timestamp < userCreditStatus.dueDate,
+                    "Cannot borrow, payment is due"
+                );
+            }
+
+            // Updating user owe and debt
+            // Update borrowed and due amounts
+            userCreditStatus.totalBorrowed += _amountToBorrow;
+            userCreditStatus.totalDue =
+                userCreditStatus.totalBorrowed -
+                userCreditStatus.totalPaid;
+            // Transfer USDC to the borrower
+            require(
+                USDCTokenAddress.transfer(_borrowerAddress, _amountToBorrow),
+                "USDC transfer failed, lack of funds in contract"
+            );
+        }
+    }
+
+    // Pay back loans
+    function repayLoans(uint256 _amountToRepay) public {
+        PersonalCredit storage userCreditStatus = accounts[msg.sender];
+
+        // Check if he is a kyc-ed individual first
+        require(bytes(userCreditStatus.kyc).length != 0, "User is not KYC-ed");
+        // Check if he has loan dued and repayment must be less than or equal to loan dued
+        require(userCreditStatus.totalDue > 0, "No outstanding loan due");
+        // Calculate late fee if payment is late and not already charged
+        if (
+            block.timestamp > userCreditStatus.dueDate &&
+            userCreditStatus.lateFee == 0
+        ) {
+            userCreditStatus.lateFee =
+                (userCreditStatus.totalDue * LATE_FEE_PERCENTAGE) /
+                10000;
+            // Update the total Due
+            userCreditStatus.totalDue += userCreditStatus.lateFee;
+        }
+        require(
+            _amountToRepay <= userCreditStatus.totalDue,
+            "Repayment exceeds outstanding loan"
+        );
+
+        // Calls for transferfrom usdc back to contract for amount to repay
+        require(
+            USDCTokenAddress.transferFrom(
+                msg.sender,
+                address(this),
+                _amountToRepay
+            ),
+            "USDC transfer failed"
+        );
+
+        // If amount to repay is less than amount dued, update accordingly
+        if (_amountToRepay < userCreditStatus.totalDue) {
+            userCreditStatus.totalPaid += _amountToRepay;
+            userCreditStatus.totalDue -= _amountToRepay;
+        }
+        // If amount to repay is equal to amount dued, update all to 0 including due date
+        else {
+            userCreditStatus.totalPaid = 0;
+            userCreditStatus.totalDue = 0;
+            userCreditStatus.totalBorrowed = 0;
+            userCreditStatus.dueDate = 0; // Reset due date
+            userCreditStatus.lateFee = 0; // Reset late fee
+            // Reward good behaviour, increase credit after full payment
+            // Understand should not decrypt here, should just do fhe.req but due to time constraints going to cheat by decrypting for mvp
+            uint256 creditIncrease = (FHE.decrypt(
+                userCreditStatus.creditLimit
+            ) * CREDIT_INCREASE_PERCENTAGE) / 10000;
+            userCreditStatus.creditLimit =
+                userCreditStatus.creditLimit +
+                FHE.asEuint128(creditIncrease);
+        }
+    }
+
+    // Allow admin to remove usdc from the contract
+    function withdrawBalance(uint256 _amountToWithdraw) public onlyAdmin {
+        require(
+            USDCTokenAddress.transfer(msg.sender, _amountToWithdraw),
+            "USDC transfer failed"
+        );
+    }
+}
