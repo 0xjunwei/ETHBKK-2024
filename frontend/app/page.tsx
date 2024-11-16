@@ -88,7 +88,7 @@ export default function Home() {
                   <ol className="list-decimal list-inside space-y-2 text-gray-300">
                     <li>Connect your wallet</li>
                     <li>Verify your identity with World ID</li>
-                    <li>apply for a loan</li>
+                    <li>Get a loan</li>
                     <li>Enjoy the benefits of LimpehFi</li>
                   </ol>
                 </CardContent>
