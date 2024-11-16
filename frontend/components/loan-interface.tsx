@@ -19,8 +19,36 @@ import {
 import { useToast } from "@/components/ui/use-toast"
 import { ToastAction } from "@/components/ui/toast"
 
-const CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_DEPLOYER_CONTRACT_ADDRESS as string
-const USDC_CONTRACT_ADDRESS = process.env.NEXT_PUBLIC_USDC_ADDRESS as string
+const getNetwork = () => {
+    if (typeof window === 'undefined') return 'unknown'
+    
+    const ethereum = (window as any).ethereum
+    if (!ethereum) return 'unknown'
+    
+    // Check for zircuit network ID (assuming it's 9990)
+    const chainId = ethereum.chainId
+    return chainId === '0xbf03' ? 'zircuit' : 'other'
+    
+}
+
+const getCurrentAddresses = () => {
+    const network = getNetwork()
+    if (network === 'zircuit') {
+        return {
+            contractAddress: '0x306D4805CfBEF177C06800AEd812d1f71cE14D2D',
+            usdcAddress: '0xf52124E0BF97F20f944D45d475B735E831Cd1575'
+        }
+    }
+    return {
+        contractAddress: process.env.NEXT_PUBLIC_DEPLOYER_CONTRACT_ADDRESS,
+        usdcAddress: process.env.NEXT_PUBLIC_USDC_ADDRESS
+    }
+}
+
+const { contractAddress } = getCurrentAddresses()
+if (!contractAddress) {
+    throw new Error('Contract address not found for this network')
+}
 
 interface AccountData {
   kyc: string
@@ -128,7 +156,10 @@ export function LoanInterface() {
         const signer = await provider.getSigner()
         const signerAddress = await signer.getAddress()
         
-        const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, provider)
+        if (!contractAddress) {
+            throw new Error('Contract address is undefined')
+        }
+        const contract = new ethers.Contract(contractAddress, abi, provider)
         
         console.log('Calling accounts function with address:', signerAddress)
         const accountInfo = await contract.accounts(signerAddress)
@@ -167,9 +198,13 @@ export function LoanInterface() {
   const fetchUSDCBalance = async () => {
     try {
       if (typeof window.ethereum !== 'undefined') {
+        const { usdcAddress, contractAddress } = getCurrentAddresses()
+        if (!usdcAddress) throw new Error('USDC address not found')
+            
         const provider = new ethers.BrowserProvider(window.ethereum)
-        const usdcContract = new ethers.Contract(USDC_CONTRACT_ADDRESS, USDC_ABI, provider)
-        const balance = await usdcContract.balanceOf(CONTRACT_ADDRESS)
+        const usdcContract = new ethers.Contract(usdcAddress, USDC_ABI, provider)
+        const balance = await usdcContract.balanceOf(contractAddress)
+        console.log("balance is", balance)
         
         setAssets(prev => [{
           ...prev[0],
@@ -188,7 +223,6 @@ export function LoanInterface() {
     
     if (window.ethereum) {
       window.ethereum.on('chainChanged', () => {
-        console.log('Network changed, refetching data...')
         fetchAccountData()
         fetchUSDCBalance()
       })
@@ -201,9 +235,6 @@ export function LoanInterface() {
     }
   }, [isVerified])
 
-  // Add debug logging
-  console.log('Raw dueDate from contract:', accountData?.statementDate)
-  
   const dueDate = accountData?.statementDate && accountData.statementDate > BigInt(0)
     ? new Date(Number(accountData.statementDate.toString()) * 1000)
     : new Date(1734366792 * 1000) // Fallback to your expected timestamp
@@ -233,8 +264,12 @@ export function LoanInterface() {
       }
 
       const provider = new ethers.BrowserProvider(window.ethereum)
+
+      if (!contractAddress) {
+        throw new Error('Contract address not found')
+      }
       const signer = await provider.getSigner()
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer)
+      const contract = new ethers.Contract(contractAddress, abi, signer)
 
       // Convert the borrow amount from the assets array 
       const borrowAmountInWei = ethers.parseUnits(borrowAmount, 6)
@@ -243,7 +278,7 @@ export function LoanInterface() {
       console.log('Borrow parameters:', {
         borrowerAddress,
         borrowAmount: borrowAmountInWei.toString(),
-        contractAddress: CONTRACT_ADDRESS
+        contractAddress: contractAddress
       })
 
       const tx = await contract.borrowFunds(borrowerAddress, borrowAmountInWei)
@@ -309,15 +344,22 @@ export function LoanInterface() {
       const signer = await provider.getSigner()
       
       // Get USDC contract instance
-      const usdcContract = new ethers.Contract(USDC_CONTRACT_ADDRESS, USDC_ABI, signer)
-      const loanContract = new ethers.Contract(CONTRACT_ADDRESS, abi, signer)
+      if (!contractAddress) {
+        throw new Error('Contract address not found')
+      }
+
+      const { usdcAddress } = getCurrentAddresses()
+      if (!usdcAddress) throw new Error('USDC address not found')
+
+      const usdcContract = new ethers.Contract(usdcAddress, USDC_ABI, signer)
+      const loanContract = new ethers.Contract(contractAddress, abi, signer)
 
       // Convert the repay amount to USDC's 6 decimals
       const repayAmountInWei = ethers.parseUnits(repayAmount, 6)
 
       // First approve the loan contract to spend USDC
       console.log('Approving USDC spend...')
-      const approveTx = await usdcContract.approve(CONTRACT_ADDRESS, repayAmountInWei)
+      const approveTx = await usdcContract.approve(contractAddress, repayAmountInWei)
       await approveTx.wait()
       console.log('USDC spend approved')
 
@@ -397,245 +439,232 @@ export function LoanInterface() {
 
   return (
     <div className="space-y-8">
-      
-      {isLoading ? (
-        <div className="text-white">Loading account data...</div>
-      ) : error ? (
-        <div className="text-red-400">{error}</div>
-      ) : accountData ? (
-        <>
-          <div className="w-full overflow-x-auto">
-            <Table className="w-full">
-              <TableHeader>
-                <TableRow className="border-b border-gray-700">
-                  <TableHead className="text-xl text-gray-400 font-medium w-[200px]">Asset</TableHead>
-                  <TableHead className="text-xl text-gray-400 font-medium w-[250px]">
-                    <div className="flex items-center gap-2">
-                      Available 
-                      {/* <InfoIcon className="h-5 w-5 cursor-help text-gray-400" /> */}
-                    </div>
-                  </TableHead>
-                  <TableHead className="text-xl text-gray-400 font-medium w-[200px]">
-                    <div className="flex flex-col">
-                      <span>Interest Rate</span>
-                      <span className="text-sm text-gray-400">Aft Due (1 Time)</span>
-                    </div>
-                    {/* <InfoIcon className="h-5 w-5 cursor-help text-gray-400 ml-2" /> */}
-                  </TableHead>
-                  <TableHead className="w-[250px]"></TableHead>
-                  <TableHead className="w-[100px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {assets.map((asset) => (
-                  <TableRow key={asset.symbol} className="border-b border-gray-700">
-                    <TableCell className="py-6 w-[200px]">
-                      <div className="flex items-center gap-3">
-                        <Image 
-                          src={asset.icon} 
-                          alt={asset.symbol} 
-                          width={32} 
-                          height={32} 
-                          className="rounded-full" 
-                        />
-                        <span className="text-white text-lg">{asset.symbol}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-6 w-[250px]">
-                      <div className="text-2xl font-medium text-white">{asset.available}</div>
-                      <div className="text-gray-400">${asset.value}</div>
-                    </TableCell>
-                    <TableCell className="!text-gray text-2xl py-6 w-[250px]">
-                      <div className="flex items-center justify-center">
-                        {asset.apy}%
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-6 w-[250px]">
-                      <Dialog open={isBorrowModalOpen} onOpenChange={setIsBorrowModalOpen}>
-                        <DialogTrigger asChild>
-                          <Button 
-                            variant="secondary" 
-                            className={`w-full ${
-                              isVerified 
-                                ? 'bg-blue-600 hover:bg-blue-700' 
-                                : 'bg-gray-700 hover:bg-gray-600'
-                            } text-white text-sm py-2`}
-                            disabled={!isVerified}
-                          >
-                            {isVerified ? 'Borrow' : 'Verify First'}
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-gray-800 border border-gray-700">
-                          <DialogHeader>
-                            <DialogTitle className="text-xl font-medium text-gray-300">Borrow Funds</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4 py-4">
-                            <div className="space-y-2">
-                              <label className="text-sm text-gray-400">Amount to Borrow</label>
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  type="number"
-                                  placeholder="Enter amount"
-                                  value={borrowAmount}
-                                  onChange={(e) => setBorrowAmount(e.target.value)}
-                                  className="bg-gray-700 border-gray-600 text-white"
-                                  disabled={isBorrowing}
-                                />
-                                <span className="text-gray-400">USDC</span>
-                              </div>
-                              {borrowError && (
-                                <p className="text-red-400 text-sm">{borrowError}</p>
-                              )}
-                            </div>
-                            <Button 
-                              variant="secondary" 
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                              onClick={handleBorrow}
-                              disabled={isBorrowing || !borrowAmount || parseFloat(borrowAmount) <= 0}
-                            >
-                              {isBorrowing ? 'Processing...' : 'Confirm Borrow'}
-                            </Button>
+      <div className="w-full overflow-x-auto">
+        <Table className="w-full">
+          <TableHeader>
+            <TableRow className="border-b border-gray-700">
+              <TableHead className="text-xl text-gray-400 font-medium w-[200px]">Asset</TableHead>
+              <TableHead className="text-xl text-gray-400 font-medium w-[250px]">
+                <div className="flex items-center gap-2">
+                  Available 
+                </div>
+              </TableHead>
+              <TableHead className="text-xl text-gray-400 font-medium w-[200px]">
+                <div className="flex flex-col">
+                  <span>Interest Rate</span>
+                  <span className="text-sm text-gray-400">Aft Due (1 Time)</span>
+                </div>
+              </TableHead>
+              <TableHead className="w-[250px]"></TableHead>
+              <TableHead className="w-[100px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {assets.map((asset) => (
+              <TableRow key={asset.symbol} className="border-b border-gray-700">
+                <TableCell className="py-6 w-[200px]">
+                  <div className="flex items-center gap-3">
+                    <Image 
+                      src={asset.icon} 
+                      alt={asset.symbol} 
+                      width={32} 
+                      height={32} 
+                      className="rounded-full" 
+                    />
+                    <span className="text-white text-lg">{asset.symbol}</span>
+                  </div>
+                </TableCell>
+                <TableCell className="py-6 w-[250px]">
+                  <div className="text-2xl font-medium text-white">{asset.available}</div>
+                  <div className="text-gray-400">${asset.value}</div>
+                </TableCell>
+                <TableCell className="!text-gray text-2xl py-6 w-[250px]">
+                  <div className="flex items-center justify-center">
+                    {asset.apy}%
+                  </div>
+                </TableCell>
+                <TableCell className="py-6 w-[250px]">
+                  <Dialog open={isBorrowModalOpen} onOpenChange={setIsBorrowModalOpen}>
+                    <DialogTrigger asChild>
+                      <Button 
+                        variant="secondary" 
+                        className={`w-full ${
+                          isVerified 
+                            ? 'bg-blue-600 hover:bg-blue-700' 
+                            : 'bg-gray-700 hover:bg-gray-600'
+                        } text-white text-sm py-2`}
+                        disabled={!isVerified}
+                      >
+                        {isVerified ? 'Borrow' : 'Verify First'}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-gray-800 border border-gray-700">
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-medium text-gray-300">Borrow Funds</DialogTitle>
+                      </DialogHeader>
+                      <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                          <label className="text-sm text-gray-400">Amount to Borrow</label>
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              placeholder="Enter amount"
+                              value={borrowAmount}
+                              onChange={(e) => setBorrowAmount(e.target.value)}
+                              className="bg-gray-700 border-gray-600 text-white"
+                              disabled={isBorrowing}
+                            />
+                            <span className="text-gray-400">USDC</span>
                           </div>
-                        </DialogContent>
-                      </Dialog>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-2xl font-medium text-gray-300 mb-2">Your Debt</h3>
-                <div className="flex items-baseline gap-3">
-                  <span className="text-4xl font-bold text-white">
-                    ${accountData?.totalDue ? formatUnits(accountData.totalDue, 6) : '0.00'}
-                  </span>
-                  <span className="text-xl text-gray-400">USDC</span>
-                </div>
-              </div>
-              
-              <Dialog open={isRepayModalOpen} onOpenChange={setIsRepayModalOpen}>
-                <DialogTrigger asChild>
-                  <Button 
-                    variant="secondary" 
-                    className={`${
-                      isVerified 
-                        ? 'bg-blue-600 hover:bg-blue-700' 
-                        : 'bg-gray-700 hover:bg-gray-600'
-                    } text-white px-8 py-4 text-lg rounded-xl`}
-                    disabled={!isVerified || !accountData?.totalDue || accountData.totalDue === BigInt(0)}
-                  >
-                    {isVerified ? 'Repay' : 'Verify First'}
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-gray-800 border border-gray-700">
-                  <DialogHeader>
-                    <DialogTitle className="text-xl font-medium text-gray-300">Repay Loan</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <label className="text-sm text-gray-400">Amount to Repay</label>
-                      <div className="flex items-center gap-2">
-                        <Input
-                          type="number"
-                          placeholder="Enter amount"
-                          value={repayAmount}
-                          onChange={(e) => setRepayAmount(e.target.value)}
-                          className="bg-gray-700 border-gray-600 text-white"
-                          disabled={isRepaying}
-                        />
-                        <span className="text-gray-400">USDC</span>
+                          {borrowError && (
+                            <p className="text-red-400 text-sm">{borrowError}</p>
+                          )}
+                        </div>
+                        <Button 
+                          variant="secondary" 
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={handleBorrow}
+                          disabled={isBorrowing || !borrowAmount || parseFloat(borrowAmount) <= 0}
+                        >
+                          {isBorrowing ? 'Processing...' : 'Confirm Borrow'}
+                        </Button>
                       </div>
-                      {repayError && (
-                        <p className="text-red-400 text-sm">{repayError}</p>
-                      )}
-                    </div>
-                    <Button 
-                      variant="secondary" 
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                      onClick={handleRepay}
-                      disabled={isRepaying || !repayAmount || parseFloat(repayAmount) <= 0}
-                    >
-                      {isRepaying ? 'Processing...' : 'Confirm Repayment'}
-                    </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                    </DialogContent>
+                  </Dialog>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+
+      <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-2xl font-medium text-gray-300 mb-2">Your Debt</h3>
+            <div className="flex items-baseline gap-3">
+              <span className="text-4xl font-bold text-white">
+                ${accountData?.totalDue ? formatUnits(accountData.totalDue, 6) : '0.00'}
+              </span>
+              <span className="text-xl text-gray-400">USDC</span>
             </div>
           </div>
-
-          {accountData && accountData.totalDue > BigInt(0) && (
-            <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700">
-              <h3 className="text-2xl font-medium text-gray-300 mb-2">Loan Due Date</h3>
-              <div className="flex items-center justify-between">
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center gap-2 text-gray-300">
-                      <CalendarIcon className="h-5 w-5" />
-                      <span className="text-xl">
-                        {dueDate.toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          year: 'numeric',
-                          month: 'long',
-                          day: 'numeric'
-                        })}
-                      </span>
-                    </div>
+          
+          <Dialog open={isRepayModalOpen} onOpenChange={setIsRepayModalOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="secondary" 
+                className={`${
+                  isVerified 
+                    ? 'bg-blue-600 hover:bg-blue-700' 
+                    : 'bg-gray-700 hover:bg-gray-600'
+                } text-white px-8 py-4 text-lg rounded-xl`}
+                disabled={!isVerified || !accountData?.totalDue || accountData.totalDue === BigInt(0)}
+              >
+                {isVerified ? 'Repay' : 'Verify First'}
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="bg-gray-800 border border-gray-700">
+              <DialogHeader>
+                <DialogTitle className="text-xl font-medium text-gray-300">Repay Loan</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <label className="text-sm text-gray-400">Amount to Repay</label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Enter amount"
+                      value={repayAmount}
+                      onChange={(e) => setRepayAmount(e.target.value)}
+                      className="bg-gray-700 border-gray-600 text-white"
+                      disabled={isRepaying}
+                    />
+                    <span className="text-gray-400">USDC</span>
                   </div>
-                  <div className="flex items-center gap-2 text-gray-300">
-                    <ClockIcon className="h-5 w-5" />
-                    <span className="text-lg">
-                      {daysLeft} days and {hoursLeft} hours remaining until due date
-                    </span>
-                  </div>
+                  {repayError && (
+                    <p className="text-red-400 text-sm">{repayError}</p>
+                  )}
                 </div>
-                <div className={`text-2xl font-bold ${daysLeft <= 7 ? 'text-red-400' : 'text-green-400'}`}>
-                  {daysLeft <= 7 ? 'Due Soon!' : 'On Track'}
+                <Button 
+                  variant="secondary" 
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                  onClick={handleRepay}
+                  disabled={isRepaying || !repayAmount || parseFloat(repayAmount) <= 0}
+                >
+                  {isRepaying ? 'Processing...' : 'Confirm Repayment'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
+
+      {accountData && accountData.totalDue > BigInt(0) && (
+        <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700">
+          <h3 className="text-2xl font-medium text-gray-300 mb-2">Loan Due Date</h3>
+          <div className="flex items-center justify-between">
+            <div className="space-y-4">
+              <div>
+                <div className="flex items-center gap-2 text-gray-300">
+                  <CalendarIcon className="h-5 w-5" />
+                  <span className="text-xl">
+                    {dueDate.toLocaleDateString('en-US', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric'
+                    })}
+                  </span>
                 </div>
               </div>
-            </div>
-          )}
-
-          {accountData && (
-            <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700">
-              <h3 className="text-2xl font-medium text-gray-300 mb-4">Account Details</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-gray-400">Credit Limit</p>
-                  <p className="text-white text-xl">${formatUnits(accountData.creditLimit, 6)} USDC</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Total Borrowed</p>
-                  <p className="text-white text-xl">${formatUnits(accountData.totalBorrowed, 6)} USDC</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Total Paid</p>
-                  <p className="text-white text-xl">${formatUnits(accountData.totalPaid, 6)} USDC</p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Late Fee</p>
-                  <p className="text-white text-xl">
-                  ${accountData.lateFee === BigInt(1) || accountData.lateFee === BigInt(0)
-                    ? '0.00'
-                    : formatUnits(accountData.lateFee, 6)
-                    } USDC
-                  </p>
-                </div>
-                <div>
-                  <p className="text-gray-400">Account Status</p>
-                  <p className={`text-xl ${accountData.isAccountActive ? 'text-green-400' : 'text-red-400'}`}>
-                    {accountData.isAccountActive ? 'Active' : 'Inactive'}
-                  </p>
-                </div>
+              <div className="flex items-center gap-2 text-gray-300">
+                <ClockIcon className="h-5 w-5" />
+                <span className="text-lg">
+                  {daysLeft} days and {hoursLeft} hours remaining until due date
+                </span>
               </div>
             </div>
-          )}
-        </>
-      ) : (
-        <div className="text-white">No account data available</div>
+            <div className={`text-2xl font-bold ${daysLeft <= 7 ? 'text-red-400' : 'text-green-400'}`}>
+              {daysLeft <= 7 ? 'Due Soon!' : 'On Track'}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {accountData && (
+        <div className="bg-gray-800/50 rounded-2xl p-8 border border-gray-700">
+          <h3 className="text-2xl font-medium text-gray-300 mb-4">Account Details</h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <p className="text-gray-400">Credit Limit</p>
+              <p className="text-white text-xl">${formatUnits(accountData.creditLimit, 6)} USDC</p>
+            </div>
+            <div>
+              <p className="text-gray-400">Total Borrowed</p>
+              <p className="text-white text-xl">${formatUnits(accountData.totalBorrowed, 6)} USDC</p>
+            </div>
+            <div>
+              <p className="text-gray-400">Total Paid</p>
+              <p className="text-white text-xl">${formatUnits(accountData.totalPaid, 6)} USDC</p>
+            </div>
+            <div>
+              <p className="text-gray-400">Late Fee</p>
+              <p className="text-white text-xl">
+              ${accountData.lateFee === BigInt(1) || accountData.lateFee === BigInt(0)
+                ? '0.00'
+                : formatUnits(accountData.lateFee, 6)
+                } USDC
+              </p>
+            </div>
+            <div>
+              <p className="text-gray-400">Account Status</p>
+              <p className={`text-xl ${accountData.isAccountActive ? 'text-green-400' : 'text-red-400'}`}>
+                {accountData.isAccountActive ? 'Active' : 'Inactive'}
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
