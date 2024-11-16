@@ -9,6 +9,9 @@ contract Credit {
     // Dapp > Wallet > status
     // Prevent anyone from accessing
     mapping(address => mapping(address => bool)) public activeContract;
+    // Late fee percentage
+    uint256 constant LATE_FEE_PERCENTAGE = 100; // 1% late fee
+    uint256 constant CREDIT_INCREASE_PERCENTAGE = 100; // 1%
 
     struct PersonalCredit {
         // Prevent Sybil, using worldcoin kyc hashnullfier as poc, can look for more ways like 3rd party svc without scanning iris
@@ -22,6 +25,7 @@ contract Credit {
         uint256 statementDate;
         // Unix timestamp format, upon statement date we would take totalDue and charge it to due date
         uint256 dueDate;
+        uint256 lateFee;
         // If in debt and not paid treat as inactivate calculating interest based on dueDate till time of payment at 2% per month? just theory
         bool isAccountActive;
     }
@@ -59,6 +63,7 @@ contract Credit {
         account.totalDue = 0;
         account.statementDate = block.timestamp;
         account.dueDate = 0; // Set upon first charge
+        account.lateFee = 0;
         account.isAccountActive = true;
     }
 
@@ -162,10 +167,22 @@ contract Credit {
     // Pay back loans
     function repayLoans(uint256 _amountToRepay) public {
         PersonalCredit storage userCreditStatus = accounts[msg.sender];
+
         // Check if he is a kyc-ed individual first
         require(bytes(userCreditStatus.kyc).length != 0, "User is not KYC-ed");
         // Check if he has loan dued and repayment must be less than or equal to loan dued
         require(userCreditStatus.totalDue > 0, "No outstanding loan due");
+        // Calculate late fee if payment is late and not already charged
+        if (
+            block.timestamp > userCreditStatus.dueDate &&
+            userCreditStatus.lateFee == 0
+        ) {
+            userCreditStatus.lateFee =
+                (userCreditStatus.totalDue * LATE_FEE_PERCENTAGE) /
+                10000;
+            // Update the total Due
+            userCreditStatus.totalDue += userCreditStatus.lateFee;
+        }
         require(
             _amountToRepay <= userCreditStatus.totalDue,
             "Repayment exceeds outstanding loan"
@@ -188,10 +205,15 @@ contract Credit {
         }
         // If amount to repay is equal to amount dued, update all to 0 including due date
         else {
-            userCreditStatus.totalPaid += _amountToRepay;
+            userCreditStatus.totalPaid = 0;
             userCreditStatus.totalDue = 0;
             userCreditStatus.totalBorrowed = 0;
             userCreditStatus.dueDate = 0; // Reset due date
+            userCreditStatus.lateFee = 0; // Reset late fee
+            // Reward good behaviour, increase credit after full payment
+            uint256 creditIncrease = (userCreditStatus.creditLimit *
+                CREDIT_INCREASE_PERCENTAGE) / 10000;
+            userCreditStatus.creditLimit += creditIncrease;
         }
     }
 }

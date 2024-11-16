@@ -48,6 +48,7 @@ contract CreditTest is Test {
             uint256 totalDue,
             uint256 statementDate,
             uint256 dueDate,
+            uint256 lateFee,
             bool isAccountActive
         ) = credit.accounts(testUser);
 
@@ -89,6 +90,7 @@ contract CreditTest is Test {
             uint256 totalDue,
             uint256 statementDate,
             uint256 dueDate,
+            uint256 lateFee,
             bool isAccountActive
         ) = credit.accounts(testUser);
 
@@ -125,6 +127,7 @@ contract CreditTest is Test {
             uint256 totalDue,
             uint256 statementDate,
             uint256 dueDate,
+            uint256 lateFee,
             bool isAccountActive
         ) = credit.accounts(testUser);
 
@@ -161,6 +164,7 @@ contract CreditTest is Test {
             uint256 totalDue,
             uint256 statementDate,
             uint256 dueDate,
+            uint256 lateFee,
             bool isAccountActive
         ) = credit.accounts(testUser);
 
@@ -175,7 +179,7 @@ contract CreditTest is Test {
         credit.repayLoans(partialRepayment);
 
         // Verify state after partial repayment
-        (, , totalBorrowed, totalPaid, totalDue, , , ) = credit.accounts(
+        (, , totalBorrowed, totalPaid, totalDue, , , , ) = credit.accounts(
             testUser
         );
         assertEq(totalBorrowed, borrowAmount); // Borrowed amount remains the same
@@ -190,11 +194,11 @@ contract CreditTest is Test {
         credit.repayLoans(fullRepayment);
 
         // Verify state after full repayment
-        (, , totalBorrowed, totalPaid, totalDue, , , ) = credit.accounts(
-            testUser
-        );
+        (, creditLimit, totalBorrowed, totalPaid, totalDue, , , , ) = credit
+            .accounts(testUser);
         assertEq(totalBorrowed, 0);
-        assertEq(totalPaid, borrowAmount); // Total paid equals total borrowed
+        assertEq(totalPaid, 0); // Total paid equals total borrowed
         assertEq(totalDue, 0); // Loan fully repaid
+        console.log("Credit limit:", creditLimit);
     }
 }
