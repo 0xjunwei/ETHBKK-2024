@@ -10,6 +10,11 @@ contract USDC is ERC20, ERC20Permit {
         _mint(msg.sender, 10000000000000 * 10 ** decimals());
     }
 
+    // Testnet token will allow anyone to mint, please dont use this code
+    function mint(address to, uint256 amount) public {
+        _mint(to, amount);
+    }
+
     // Override the decimals function to return the desired number of decimals (e.g., 6) matches usdc
     function decimals() public view override returns (uint8) {
         return 6;

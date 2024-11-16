@@ -1,5 +1,5 @@
 //SPDX-License-Identifier: MIT
-pragma solidity ^0.8.28;
+pragma solidity ^0.8.24;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -159,7 +159,7 @@ contract Credit {
             // Transfer USDC to the borrower
             require(
                 USDCTokenAddress.transfer(_borrowerAddress, _amountToBorrow),
-                "USDC transfer failed"
+                "USDC transfer failed, lack of funds in contract"
             );
         }
     }
@@ -215,5 +215,13 @@ contract Credit {
                 CREDIT_INCREASE_PERCENTAGE) / 10000;
             userCreditStatus.creditLimit += creditIncrease;
         }
+    }
+
+    // Allow admin to remove usdc from the contract
+    function withdrawBalance(uint256 _amountToWithdraw) public onlyAdmin {
+        require(
+            USDCTokenAddress.transfer(msg.sender, _amountToWithdraw),
+            "USDC transfer failed"
+        );
     }
 }
