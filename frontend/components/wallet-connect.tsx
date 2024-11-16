@@ -2,11 +2,17 @@
 
 import { ConnectButton } from '@rainbow-me/rainbowkit'
 
-export function WalletConnect() {
+interface WalletConnectProps {
+  className?: string;
+}
+
+export function WalletConnect({ className }: WalletConnectProps) {
   return (
-    <ConnectButton 
-      chainStatus="icon"
-      showBalance={false}
-    />
+    <div className={className}>
+      <ConnectButton 
+        chainStatus="icon"
+        showBalance={true}
+      />
+    </div>
   )
 }

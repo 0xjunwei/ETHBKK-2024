@@ -1,13 +1,9 @@
-'use client'
+// Remove this import if it exists:
+// import { chains } from '@/lib/wagmi'
 
-import './globals.css'
-import { WagmiConfig } from 'wagmi'
-import { config, chains } from '@/lib/wagmi'
-import { RainbowKitProvider } from '@rainbow-me/rainbowkit'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-
-// Create a client
-const queryClient = new QueryClient()
+// Instead, import only what you need:
+import { Web3Provider } from '@/components/web3-provider'
+import './globals.css'  // Your global styles
 
 export default function RootLayout({
   children,
@@ -17,13 +13,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <QueryClientProvider client={queryClient}>
-          <WagmiConfig config={config}>
-            <RainbowKitProvider chains={chains}>
-              {children}
-            </RainbowKitProvider>
-          </WagmiConfig>
-        </QueryClientProvider>
+        <Web3Provider>
+          {children}
+        </Web3Provider>
       </body>
     </html>
   )

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { IDKitWidget, ISuccessResult, } from '@worldcoin/idkit'
+import { IDKitWidget, ISuccessResult, VerificationLevel } from '@worldcoin/idkit'
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
@@ -54,13 +54,12 @@ export default function WorldIDVerification() {
       </CardHeader>
       <CardContent className="space-y-4">
         <IDKitWidget
-          app_id={process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID || ""}
+          app_id={`app_${process.env.NEXT_PUBLIC_WORLDCOIN_APP_ID || ""}`}
           action="testing"
           signal="my_signal"
-          verification_level="orb"
+          verification_level={VerificationLevel.Orb} 
           onSuccess={onSuccess}
           handleVerify={verifyProof}
-          enableTelemetry={false}
         >
           {({ open }) => (
             <Button onClick={open} variant="outline">

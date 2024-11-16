@@ -12,11 +12,15 @@ export function Navbar() {
   const [isVerified, setIsVerified] = useState(false)
 
   const verifyProof = async (proof: ISuccessResult) => {
-    // Implement your verification logic here
-    console.log('Proof received:', proof)
-    // For demo purposes, we'll just set it to true
-    setIsVerified(true)
-    return true
+    try {
+      // Implement your verification logic here
+      console.log('Proof received:', proof)
+      // For demo purposes, we'll just set it to true
+      setIsVerified(true)
+    } catch (error) {
+      console.error('Verification failed:', error)
+      throw error
+    }
   }
 
   const onSuccess = (result: ISuccessResult) => {
@@ -46,7 +50,6 @@ export function Navbar() {
             signal="my_signal"
             onSuccess={onSuccess}
             handleVerify={verifyProof}
-            enableTelemetry
           >
             {({ open }) => (
               <Button 
