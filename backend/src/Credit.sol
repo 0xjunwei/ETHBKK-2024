@@ -22,7 +22,6 @@ contract Credit {
         uint256 totalPaid;
         // Calculating total borrowed amount  - total paid to get total due
         uint256 totalDue;
-        uint256 statementDate;
         // Unix timestamp format, upon statement date we would take totalDue and charge it to due date
         uint256 dueDate;
         uint256 lateFee;
@@ -61,7 +60,6 @@ contract Credit {
         account.totalBorrowed = 0;
         account.totalPaid = 0;
         account.totalDue = 0;
-        account.statementDate = block.timestamp;
         account.dueDate = 0; // Set upon first charge
         account.lateFee = 0;
         account.isAccountActive = true;
