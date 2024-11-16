@@ -4,6 +4,7 @@
 // Instead, import only what you need:
 import { Web3Provider } from '@/components/web3-provider'
 import './globals.css'  // Your global styles
+import { Toaster } from "@/components/ui/toaster"
 
 export default function RootLayout({
   children,
@@ -16,6 +17,7 @@ export default function RootLayout({
         <Web3Provider>
           {children}
         </Web3Provider>
+        <Toaster />
       </body>
     </html>
   )

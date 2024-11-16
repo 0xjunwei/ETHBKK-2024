@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { ChevronDown, LogOut } from 'lucide-react'
+import { ChevronDown, LogOut, Check } from 'lucide-react'
 
 export function Navbar() {
   const { isVerified, setIsVerified } = useVerificationStore()
@@ -102,6 +102,11 @@ export function Navbar() {
     setChainId(null)
   }
 
+  const handleWorldIDLogout = () => {
+    setIsVerified(false)
+    console.log('Logged out of World ID')
+  }
+
   const networks = [
     { id: 48899, name: 'Zircuit' },
     { id: 534351, name: 'Scroll Sepolia' },
@@ -121,27 +126,51 @@ export function Navbar() {
         </Link>
         <div className="space-x-4 flex items-center">
           <Button variant="ghost" asChild>
-            <Link href="/dashboard" className="text-gray-300 hover:text-white transition-colors">
-              Dashboard
+            <Link href="/card" className="text-white-300 hover:text-black transition-colors">
+              Your Cards
             </Link>
           </Button>
-          <IDKitWidget
-            app_id="app_staging_1b1bcbd424e6b9865f37e0c581b173e0"
-            action="verify"
-            signal="my_signal"
-            onSuccess={onSuccess}
-            handleVerify={verifyProof}
-          >
-            {({ open }) => (
-              <Button 
-                variant="outline" 
-                onClick={open} 
-                className={`transition-colors ${isVerified ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-gray-700 hover:bg-gray-600 text-gray-300'}`}
-              >
-                {isVerified ? 'Verified ✓' : 'Verify with World ID'}
-              </Button>
-            )}
-          </IDKitWidget>
+          {isVerified ? (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline" 
+                  className="bg-green-500 hover:bg-green-600 text-white"
+                >
+                  <Check className="mr-2 h-4 w-4" />
+                  Verified
+                  <ChevronDown className="ml-2 h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[200px] bg-gray-800 border-gray-700">
+                <DropdownMenuItem
+                  onClick={handleWorldIDLogout}
+                  className="text-red-400 hover:text-red-300 cursor-pointer"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  Logout World ID
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            <IDKitWidget
+              app_id="app_staging_1b1bcbd424e6b9865f37e0c581b173e0"
+              action="verify"
+              signal="my_signal"
+              onSuccess={onSuccess}
+              handleVerify={verifyProof}
+            >
+              {({ open }) => (
+                <Button 
+                  variant="outline" 
+                  onClick={open} 
+                  className="bg-gray-700 hover:bg-gray-600 text-gray-300"
+                >
+                  Verify with World ID
+                </Button>
+              )}
+            </IDKitWidget>
+          )}
           {isConnected ? (
             <div className="flex items-center space-x-2">
               <DropdownMenu>
