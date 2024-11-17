@@ -32,6 +32,16 @@ export function Navbar() {
       window.ethereum?.removeListener('chainChanged', checkConnection)
     }
   }, [])
+  
+  useEffect(() => {
+    // Make debugVerify accessible globally
+    if (typeof window !== 'undefined') {
+      (window as any).debugVerify = () => {
+        setIsVerified(true)
+        console.log('🔧 Debug: Verification bypassed and set to true')
+      }
+    }
+  }, [setIsVerified])
 
   const checkConnection = async () => {
     if (typeof window.ethereum !== 'undefined') {
@@ -91,6 +101,7 @@ export function Navbar() {
     console.log('Proof received:', proof)
     setIsVerified(true)
   }
+
 
   const onSuccess = (result: ISuccessResult) => {
     console.log('Verification successful:', result)
