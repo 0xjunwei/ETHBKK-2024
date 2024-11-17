@@ -22,12 +22,6 @@ USDC: 0x085da17a14D4AB15e34586fb998BaABA1AaC73D6
 Credit: 0xcb0CEc00b65ED1354EFb7f3f551897Ec480504dE
 
 
-
-short description of the team and their backgrounds
-Junwei: Backend
-MeePok: Backend
-Ryan: No
-
 instructions for testing the integration
 - visit https://ethbkk-2024-deployment.vercel.app/
 - Follow the video demo for guide
